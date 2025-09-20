@@ -3,56 +3,63 @@ package com.alexander.seriesapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.alexander.seriesapp.ui.LoginScreen
+import com.alexander.seriesapp.ui.RegisterScreen
 import com.alexander.seriesapp.ui.SeriesScreen
-import com.alexander.seriesapp.viewmodel.SeriesViewModel
+import com.alexander.seriesapp.data.SessionManager
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: SeriesViewModel by viewModels ()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                SeriesApp(viewModel)
+            val navController = rememberNavController()
+            val sessionManager = SessionManager(this)
+
+
+            val startDestination = if (sessionManager.getUser() != null) "series" else "login"
+
+            NavHost(
+                navController = navController,
+                startDestination = startDestination
+            ) {
+                composable("login") {
+                    LoginScreen(
+                        onLoginSuccess = {
+                            navController.navigate("series") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        },
+                        onRegisterClick = {
+                            navController.navigate("register")
+                        }
+                    )
+                }
+
+                composable("register") {
+                    RegisterScreen(
+                        onRegisterSuccess = {
+                            navController.navigate("series") {
+                                popUpTo("login") { inclusive = true }
+                            }
+                        }
+                    )
+                }
+
+                composable("series") {
+                    SeriesScreen(
+                        onLogout = {
+                            sessionManager.clearUser()
+                            navController.navigate("login") {
+                                popUpTo("series") { inclusive = true }
+                            }
+                        }
+                    )
+                }
             }
-        }
-
-        /*
-        viewModel.agregarSerie("Loki", 12)
-        viewModel.agregarSerie("Breaking Bad", 62)
-        viewModel.agregarSerie("Stranger Things", 34)
-        viewModel.agregarSerie("The Office", 201)
-        viewModel.agregarSerie("The Boys", 24)
-        viewModel.agregarSerie("Game of Thrones", 73)
-        viewModel.agregarSerie("Friends", 236)
-        viewModel.agregarSerie("The Mandalorian", 16)
-        viewModel.agregarSerie("The Witcher", 16)*/
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SeriesApp(viewModel: SeriesViewModel) {
-    Scaffold (
-        topBar = { TopAppBar(title = { Text("SERIES") }) }
-    ) { padding ->
-        when {
-            viewModel.hasError -> Text("Error al cargar datos", modifier = Modifier.padding(padding))
-            viewModel.isLoading -> CircularProgressIndicator(modifier = Modifier.padding(padding))
-            else -> SeriesScreen(
-                seriesList = viewModel.series,
-                modifier = Modifier.padding(padding)
-            )
         }
     }
 }

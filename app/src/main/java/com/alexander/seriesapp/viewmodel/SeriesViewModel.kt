@@ -51,10 +51,10 @@ class SeriesViewModel : ViewModel() {
         })
     }
 
-    fun agregarSerie(nombre: String, episodios: Int) {
+    fun agregarSerie(nombre: String, episodios: Int, imagenUrl: String? = null) {
         val record = seriesRef.push()
-        val serie = Serie(id = record.key, nombre = nombre, episodios = episodios)
+        val serie = Serie(id = record.key, nombre = nombre, episodios = episodios, imagenUrl = imagenUrl)
         record.setValue(serie)
-
     }
+
 }
