@@ -11,17 +11,17 @@ class SessionManager(context: Context) {
         private const val KEY_USER_EMAIL = "USER_EMAIL"
     }
 
-    // 👉 Guardar usuario
+    //  Guardar usuario
     fun saveUser(email: String) {
         prefs.edit().putString(KEY_USER_EMAIL, email).apply()
     }
 
-    // 👉 Obtener usuario
+    // Obtener usuario
     fun getUser(): String? {
         return prefs.getString(KEY_USER_EMAIL, null)
     }
 
-    // 👉 Borrar solo el usuario (por ejemplo al cerrar sesión)
+    //  Borrar solo el usuario (por ejemplo al cerrar sesión)
     fun clearUser() {
         prefs.edit().remove(KEY_USER_EMAIL).apply()
     }

@@ -64,13 +64,17 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
     implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-auth-ktx:22.3.1")
+    implementation("com.google.firebase:firebase-firestore-ktx:24.7.1") // ✅ Firestore en vez de RTDB
 
+    // ViewModel en Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 
-    implementation("com.google.firebase:firebase-auth-ktx:22.3.1")
-
-
+    // Coil para imágenes
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.28.0")
+
+
 
 }

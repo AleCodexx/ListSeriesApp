@@ -1,60 +1,110 @@
 package com.alexander.seriesapp.viewmodel
 
-import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.alexander.seriesapp.model.Serie
-import com.google.firebase.Firebase
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
-import com.google.firebase.database.database
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class SeriesViewModel : ViewModel() {
-    val series = mutableStateListOf<Serie>()
-    var isLoading by mutableStateOf(false)
-    var hasError by mutableStateOf(false)
+    private val db = FirebaseFirestore.getInstance()
 
-    private val database = Firebase.database
-    private val seriesRef = database.getReference("series")
+    private val _series = MutableStateFlow<List<Serie>>(emptyList())
+    val series: StateFlow<List<Serie>> = _series
+
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _hasError = MutableStateFlow(false)
+    val hasError: StateFlow<Boolean> = _hasError
 
     init {
         loadSeries()
     }
 
-    private fun loadSeries() {
-        isLoading = true
+    // 👉 Método público que puedes usar en SwipeRefresh
+    fun loadSeries() {
+        _isLoading.value = true
+        _hasError.value = false
+        fetchSeries()
+    }
 
-        seriesRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val tempList = mutableListOf<Serie>()
-                for (item in snapshot.children) {
-                    val serie = item.getValue(Serie::class.java)
-                    serie?.let { tempList.add(it) }
+    // 🔎 Encargado de traer los datos de Firestore
+    private fun fetchSeries() {
+        db.collection("series")
+            .get()
+            .addOnSuccessListener { result ->
+                val lista = result.map { doc ->
+                    Serie(
+                        id = doc.id,
+                        nombre = doc.getString("nombre") ?: "",
+                        episodios = doc.getLong("episodios")?.toInt() ?: 0,
+                        imagenUrl = doc.getString("imagenUrl") ?: ""
+                    )
                 }
-
-                series.clear()
-                series.addAll(tempList)
-                isLoading = false
-
-                Log.d("SeriesApp", "Series cargadas: ${series.size}")
+                _series.value = lista
+                _isLoading.value = false
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("SeriesApp", "Error al leer series", error.toException())
-                hasError = true
-                isLoading = false
+            .addOnFailureListener {
+                _hasError.value = true
+                _isLoading.value = false
             }
-        })
     }
 
-    fun agregarSerie(nombre: String, episodios: Int, imagenUrl: String? = null) {
-        val record = seriesRef.push()
-        val serie = Serie(id = record.key, nombre = nombre, episodios = episodios, imagenUrl = imagenUrl)
-        record.setValue(serie)
+    fun addSerie(nombre: String, episodios: Int, imagenUrl: String) {
+        val nuevaSerie = hashMapOf(
+            "nombre" to nombre,
+            "episodios" to episodios,
+            "imagenUrl" to imagenUrl
+        )
+
+        db.collection("series")
+            .add(nuevaSerie)
+            .addOnSuccessListener { documentRef ->
+                // Se creó con ID único en Firestore
+                val serie = Serie(
+                    id = documentRef.id,
+                    nombre = nombre,
+                    episodios = episodios,
+                    imagenUrl = imagenUrl
+                )
+                // Actualizamos el state local al toque
+                _series.value = _series.value + serie
+            }
+            .addOnFailureListener {
+                _hasError.value = true
+            }
     }
 
+    fun updateSerie(serie: Serie) {
+        val serieMap = hashMapOf(
+            "nombre" to serie.nombre,
+            "episodios" to serie.episodios,
+            "imagenUrl" to serie.imagenUrl
+        )
+        db.collection("series")
+            .document(serie.id)
+            .set(serieMap)
+            .addOnSuccessListener {
+                // Actualiza la lista local
+                _series.value = _series.value.map {
+                    if (it.id == serie.id) serie else it
+                }
+            }
+            .addOnFailureListener {
+                _hasError.value = true
+            }
+    }
+
+    fun deleteSerie(serie: Serie) {
+        db.collection("series")
+            .document(serie.id)
+            .delete()
+            .addOnSuccessListener {
+                _series.value = _series.value.filter { it.id != serie.id }
+            }
+            .addOnFailureListener {
+                _hasError.value = true
+            }
+    }
 }
